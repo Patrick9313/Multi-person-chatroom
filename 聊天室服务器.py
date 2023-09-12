@@ -3,6 +3,7 @@ import  wx
 from socket import *
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 class MsbServer(wx.Frame):
 
     def __init__(self):
@@ -22,12 +23,13 @@ class MsbServer(wx.Frame):
         g1.Add(stop_server_button, 1, wx.TOP )
         box.Add(g1, 1, wx.ALIGN_CENTER)  # ALIGN_CENTER 联合居中
 
-        #创建只读的文本框,显示聊天记录
+        # 创建只读的文本框,显示聊天记录
         self.text = wx.TextCtrl(pl, size=(400, 400), style=wx.TE_MULTILINE | wx.TE_READONLY)
         box.Add(self.text, 1, wx.ALIGN_CENTER)
         pl.SetSizer(box)
         '''以上代码窗口结束 '''
-
+        # 创建一个拥有10个工作线程的线程池
+        self.executor = ThreadPoolExecutor(max_workers=10)
 
         '''服务准备执行的一些属性'''
         self.isOn = False # 服务器没有启动
@@ -62,7 +64,8 @@ class MsbServer(wx.Frame):
             #创建一个会话线程
             session_thread =  SessionThread(session_socket,username,self)
             self.session_thread_map[username] = session_thread
-            session_thread.start()
+            # 使用线程池处理连接
+            self.executor.submit(session_thread.run)
             # 表示有客户端进入到聊天室
             self.show_info_and_send_client("服务器通知","欢迎%s进入聊天室！"%username,time.strftime('%Y-%m-%d %H:%M:%S',time.localtime()))
         self.server_socket.close()
